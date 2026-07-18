@@ -1,5 +1,6 @@
-#include "common.h"
 #include "server-http.h"
+
+#include "common.h"
 #include "server-common.h"
 #include "ui.h"
 
@@ -16,25 +17,18 @@
 //
 
 class server_http_context::Impl {
-public:
+  public:
     std::unique_ptr<httplib::Server> srv;
 };
 
-server_http_context::server_http_context()
-    : pimpl(std::make_unique<Impl>())
-{}
+server_http_context::server_http_context() : pimpl(std::make_unique<Impl>()) {}
 
 server_http_context::~server_http_context() = default;
 
 static void log_server_request(const httplib::Request & req, const httplib::Response & res) {
     // skip logging requests that are regularly sent, to avoid log spam
-    if (req.path == "/health"
-        || req.path == "/v1/health"
-        || req.path == "/models"
-        || req.path == "/v1/models"
-        || req.path == "/props"
-        || req.path == "/metrics"
-    ) {
+    if (req.path == "/health" || req.path == "/v1/health" || req.path == "/models" || req.path == "/v1/models" ||
+        req.path == "/props" || req.path == "/metrics") {
         return;
     }
 
@@ -48,17 +42,17 @@ static void log_server_request(const httplib::Request & req, const httplib::Resp
 
 // For Google Cloud Platform deployment compatibility
 struct gcp_params {
-    bool enabled;
+    bool        enabled;
     std::string path_health;
     std::string path_predict;
-    int port;
+    int         port;
 
     // Ref: https://docs.cloud.google.com/vertex-ai/docs/predictions/custom-container-requirements#aip-variables
     gcp_params() {
-        enabled = getenv("AIP_MODE", "") == "PREDICTION";
-        path_health = getenv("AIP_HEALTH_ROUTE", "", true); // default: using the route defined in server.cpp
+        enabled      = getenv("AIP_MODE", "") == "PREDICTION";
+        path_health  = getenv("AIP_HEALTH_ROUTE", "", true);  // default: using the route defined in server.cpp
         path_predict = getenv("AIP_PREDICT_ROUTE", "/predict", true);
-        port = std::stoi(getenv("AIP_HTTP_PORT", "8080"));
+        port         = std::stoi(getenv("AIP_HTTP_PORT", "8080"));
     }
 
     static std::string getenv(const char * name, const std::string & default_value, bool ensure_leading_slash = false) {
@@ -78,11 +72,12 @@ bool server_http_context::init(const common_params & params) {
     const gcp_params gcp;
 
     path_prefix = params.api_prefix;
-    port = params.port;
-    hostname = params.hostname;
+    port        = params.port;
+    hostname    = params.hostname;
 
     if (gcp.enabled) {
-        SRV_INF("Google Cloud Platform compat: health route = %s, predict route = %s, port = %d\n", gcp.path_health.c_str(), gcp.path_predict.c_str(), gcp.port);
+        SRV_INF("Google Cloud Platform compat: health route = %s, predict route = %s, port = %d\n",
+                gcp.path_health.c_str(), gcp.path_predict.c_str(), gcp.port);
 
         if (port != gcp.port) {
             SRV_WRN("Google Cloud Platform compat: overriding server port %d with AIP_HTTP_PORT %d\n", port, gcp.port);
@@ -96,9 +91,7 @@ bool server_http_context::init(const common_params & params) {
 #ifdef CPPHTTPLIB_OPENSSL_SUPPORT
     if (!params.ssl_file_key.empty() && !params.ssl_file_cert.empty()) {
         SRV_INF("running with SSL: key = %s, cert = %s\n", params.ssl_file_key.c_str(), params.ssl_file_cert.c_str());
-        srv = std::make_unique<httplib::SSLServer>(
-            params.ssl_file_cert.c_str(), params.ssl_file_key.c_str()
-        );
+        srv    = std::make_unique<httplib::SSLServer>(params.ssl_file_cert.c_str(), params.ssl_file_key.c_str());
         is_ssl = true;
     } else {
         SRV_INF("%s", "running without SSL\n");
@@ -112,7 +105,9 @@ bool server_http_context::init(const common_params & params) {
     srv.reset(new httplib::Server());
 #endif
 
-    srv->set_default_headers({{"Server", "llama.cpp"}});
+    srv->set_default_headers({
+        { "Server", "llama.cpp" }
+    });
     // srv->set_logger(log_server_request); // TODO @ngxson : this is too spamy, no very useful; improve it in the future
     srv->set_exception_handler([](const httplib::Request &, httplib::Response & res, const std::exception_ptr & ep) {
         // this is fail-safe; exceptions should already handled by `ex_wrapper`
@@ -134,21 +129,16 @@ bool server_http_context::init(const common_params & params) {
     srv->set_error_handler([](const httplib::Request &, httplib::Response & res) {
         if (res.status == 404) {
             res.set_content(
-                safe_json_to_str(json {
-                    {"error", {
-                        {"message", "File Not Found"},
-                        {"type", "not_found_error"},
-                        {"code", 404}
-                    }}
-                }),
-                "application/json; charset=utf-8"
-            );
+                safe_json_to_str(json{
+                    { "error", { { "message", "File Not Found" }, { "type", "not_found_error" }, { "code", 404 } } }
+            }),
+                "application/json; charset=utf-8");
         }
         // for other error codes, we skip processing here because it's already done by res->error()
     });
 
     // set timeouts and change hostname and port
-    srv->set_read_timeout (params.timeout_read);
+    srv->set_read_timeout(params.timeout_read);
     srv->set_write_timeout(params.timeout_write);
     srv->set_socket_options([reuse_port = params.reuse_port](const socket_t sock) {
         httplib::set_socket_opt(sock, SOL_SOCKET, SO_REUSEADDR, 1);
@@ -162,7 +152,7 @@ bool server_http_context::init(const common_params & params) {
     });
 
     if (params.api_keys.size() == 1) {
-        const auto key = params.api_keys[0];
+        const auto        key    = params.api_keys[0];
         const std::string substr = key.substr(std::max(static_cast<int>(key.length() - 4), 0));
         SRV_INF("api_keys: ****%s\n", substr.c_str());
     } else if (params.api_keys.size() > 1) {
@@ -175,12 +165,8 @@ bool server_http_context::init(const common_params & params) {
 
     // Public endpoints - API routes plus all embedded UI assets
     static const std::unordered_set<std::string> get_public_endpoints = []() {
-        std::unordered_set<std::string> endpoints {
-            "/health",
-            "/v1/health",
-            "/models",
-            "/v1/models",
-            "/",
+        std::unordered_set<std::string> endpoints{
+            "/health", "/v1/health", "/models", "/v1/models", "/",
         };
         for (const llama_ui_asset & a : llama_ui_get_assets()) {
             endpoints.insert("/" + a.name);
@@ -188,7 +174,8 @@ bool server_http_context::init(const common_params & params) {
         return endpoints;
     }();
 
-    auto middleware_validate_api_key = [api_keys = params.api_keys](const httplib::Request & req, httplib::Response & res) {
+    auto middleware_validate_api_key = [api_keys = params.api_keys](const httplib::Request & req,
+                                                                    httplib::Response &      res) {
         // If API key is not set, skip validation
         if (api_keys.empty()) {
             return true;
@@ -214,21 +201,17 @@ bool server_http_context::init(const common_params & params) {
 
         // validate the API key
         if (std::find(api_keys.begin(), api_keys.end(), req_api_key) != api_keys.end()) {
-            return true; // API key is valid
+            return true;  // API key is valid
         }
 
         // API key is invalid or not provided
         res.status = 401;
         res.set_content(
-            safe_json_to_str(json {
-                {"error", {
-                    {"message", "Invalid API Key"},
-                    {"type", "authentication_error"},
-                    {"code", 401}
-                }}
-            }),
-            "application/json; charset=utf-8"
-        );
+            safe_json_to_str(json{
+                { "error",
+                 { { "message", "Invalid API Key" }, { "type", "authentication_error" }, { "code", 401 } } }
+        }),
+            "application/json; charset=utf-8");
 
         SRV_WRN("%s", "unauthorized: Invalid API Key\n");
 
@@ -242,50 +225,47 @@ bool server_http_context::init(const common_params & params) {
                 req.path == "/" || (!tmp.empty() && tmp.back() == "html")) {
                 if (const llama_ui_asset * a = llama_ui_find_asset("loading.html")) {
                     res.status = 503;
-                    res.set_content(reinterpret_cast<const char*>(a->data), a->size, "text/html; charset=utf-8");
+                    res.set_content(reinterpret_cast<const char *>(a->data), a->size, "text/html; charset=utf-8");
                     return false;
                 }
             }
 #else
-            (void)req;
+            (void) req;
 #endif
             // no endpoints are allowed to be accessed when the server is not ready
             // this is to prevent any data races or inconsistent states
             res.status = 503;
             res.set_content(
-                safe_json_to_str(json {
-                    {"error", {
-                        {"message", "Loading model"},
-                        {"type", "unavailable_error"},
-                        {"code", 503}
-                    }}
-                }),
-                "application/json; charset=utf-8"
-            );
+                safe_json_to_str(json{
+                    { "error",
+                     { { "message", "Loading model" }, { "type", "unavailable_error" }, { "code", 503 } } }
+            }),
+                "application/json; charset=utf-8");
             return false;
         }
         return true;
     };
 
     // register server middlewares
-    srv->set_pre_routing_handler([middleware_validate_api_key, middleware_server_state](const httplib::Request & req, httplib::Response & res) {
-        res.set_header("Access-Control-Allow-Origin", req.get_header_value("Origin"));
-        // If this is OPTIONS request, skip validation because browsers don't include Authorization header
-        if (req.method == "OPTIONS") {
-            res.set_header("Access-Control-Allow-Credentials", "true");
-            res.set_header("Access-Control-Allow-Methods",     "GET, POST");
-            res.set_header("Access-Control-Allow-Headers",     "*");
-            res.set_content("", "text/html"); // blank response, no data
-            return httplib::Server::HandlerResponse::Handled; // skip further processing
-        }
-        if (!middleware_server_state(req, res)) {
-            return httplib::Server::HandlerResponse::Handled;
-        }
-        if (!middleware_validate_api_key(req, res)) {
-            return httplib::Server::HandlerResponse::Handled;
-        }
-        return httplib::Server::HandlerResponse::Unhandled;
-    });
+    srv->set_pre_routing_handler(
+        [middleware_validate_api_key, middleware_server_state](const httplib::Request & req, httplib::Response & res) {
+            res.set_header("Access-Control-Allow-Origin", req.get_header_value("Origin"));
+            // If this is OPTIONS request, skip validation because browsers don't include Authorization header
+            if (req.method == "OPTIONS") {
+                res.set_header("Access-Control-Allow-Credentials", "true");
+                res.set_header("Access-Control-Allow-Methods", "GET, POST");
+                res.set_header("Access-Control-Allow-Headers", "*");
+                res.set_content("", "text/html");                  // blank response, no data
+                return httplib::Server::HandlerResponse::Handled;  // skip further processing
+            }
+            if (!middleware_server_state(req, res)) {
+                return httplib::Server::HandlerResponse::Handled;
+            }
+            if (!middleware_validate_api_key(req, res)) {
+                return httplib::Server::HandlerResponse::Handled;
+            }
+            return httplib::Server::HandlerResponse::Unhandled;
+        });
 
     auto n_threads_http = params.n_threads_http;
     if (n_threads_http < 1) {
@@ -325,7 +305,7 @@ bool server_http_context::init(const common_params & params) {
                     return true;
                 }
                 if (req.get_header_value("Accept-Encoding").find("gzip") == std::string::npos) {
-                    res.status = 415; // unsupported media type
+                    res.status = 415;  // unsupported media type
                     res.set_content("Error: gzip is not supported by this browser", "text/plain");
                     return false;
                 } else {
@@ -337,10 +317,13 @@ bool server_http_context::init(const common_params & params) {
             auto serve_asset_cached = [](const std::string & name, bool isolation) {
                 return [name, isolation](const httplib::Request & req, httplib::Response & res) {
                     if (!handle_gzip_header(req, res)) {
-                        return true; // returns error message
+                        return true;  // returns error message
                     }
                     const llama_ui_asset * a = llama_ui_find_asset(name);
-                    if (!a) { res.status = 404; return false; }
+                    if (!a) {
+                        res.status = 404;
+                        return false;
+                    }
                     res.set_header("ETag", a->etag);
                     if (const std::string & inm = req.get_header_value("If-None-Match");
                         !inm.empty() && (inm == a->etag || inm == std::string("W/") + a->etag)) {
@@ -348,11 +331,11 @@ bool server_http_context::init(const common_params & params) {
                         return false;
                     }
                     if (isolation) {
-                        res.set_header("Cross-Origin-Embedder-Policy", "require-corp");
-                        res.set_header("Cross-Origin-Opener-Policy",   "same-origin");
+                        // res.set_header("Cross-Origin-Embedder-Policy", "require-corp");
+                        // res.set_header("Cross-Origin-Opener-Policy",   "same-origin");
                     }
                     res.set_header("Cache-Control", "public, max-age=31536000, immutable");
-                    res.set_content(reinterpret_cast<const char*>(a->data), a->size, a->type.c_str());
+                    res.set_content(reinterpret_cast<const char *>(a->data), a->size, a->type.c_str());
                     return false;
                 };
             };
@@ -360,7 +343,7 @@ bool server_http_context::init(const common_params & params) {
             auto serve_asset_nocache = [](const std::string & name) {
                 return [name](const httplib::Request & req, httplib::Response & res) {
                     if (!handle_gzip_header(req, res)) {
-                        return true; // returns error message
+                        return true;  // returns error message
                     }
                     const llama_ui_asset * a = llama_ui_find_asset(name);
                     if (!a) {
@@ -368,27 +351,25 @@ bool server_http_context::init(const common_params & params) {
                         return false;
                     }
                     res.set_header("Cache-Control", "no-cache");
-                    res.set_content(reinterpret_cast<const char*>(a->data), a->size, a->type.c_str());
+                    res.set_content(reinterpret_cast<const char *>(a->data), a->size, a->type.c_str());
                     return false;
                 };
             };
 
             // main index file
-            srv->Get(params.api_prefix + "/",           serve_asset_cached("index.html", true));
+            srv->Get(params.api_prefix + "/", serve_asset_cached("index.html", true));
             srv->Get(params.api_prefix + "/index.html", serve_asset_cached("index.html", true));
 
             // All remaining assets registered directly from the embedded asset table.
             // PWA revalidation files (sw.js, manifest, version.json) use no-cache;
             // everything else is immutable.
-            static const std::unordered_set<std::string> no_cache_names = {
-                "sw.js",
-                "manifest.webmanifest",
-                "_app/version.json",
-                "build.json"
-            };
+            static const std::unordered_set<std::string> no_cache_names = { "sw.js", "manifest.webmanifest",
+                                                                            "_app/version.json", "build.json" };
 
             for (const auto & a : llama_ui_get_assets()) {
-                if (a.name == "index.html") continue;  // served at "/" and "/index.html" above
+                if (a.name == "index.html") {
+                    continue;  // served at "/" and "/index.html" above
+                }
                 if (no_cache_names.count(a.name)) {
                     SRV_DBG("serve nocache for %s\n", a.name.c_str());
                     srv->Get(params.api_prefix + "/" + a.name, serve_asset_nocache(a.name));
@@ -406,9 +387,9 @@ bool server_http_context::init(const common_params & params) {
 bool server_http_context::start() {
     // Bind and listen
 
-    const auto & srv = pimpl->srv;
-    auto was_bound = false;
-    auto is_sock = false;
+    const auto & srv       = pimpl->srv;
+    auto         was_bound = false;
+    auto         is_sock   = false;
     if (string_ends_with(std::string(hostname), ".sock")) {
         is_sock = true;
         SRV_INF("%s", "setting address family to AF_UNIX\n");
@@ -421,7 +402,7 @@ bool server_http_context::start() {
         // bind HTTP listen port
         if (port == 0) {
             const auto bound_port = srv->bind_to_any_port(hostname);
-            was_bound = (bound_port >= 0);
+            was_bound             = (bound_port >= 0);
             if (was_bound) {
                 port = bound_port;
             }
@@ -439,8 +420,8 @@ bool server_http_context::start() {
     thread = std::thread([this] { pimpl->srv->listen_after_bind(); });
     srv->wait_until_ready();
 
-    listening_address = is_sock ? string_format("unix://%s", hostname.c_str())
-                                : string_format("%s://%s:%d", is_ssl ? "https" : "http", hostname.c_str(), port);
+    listening_address = is_sock ? string_format("unix://%s", hostname.c_str()) :
+                                  string_format("%s://%s:%d", is_ssl ? "https" : "http", hostname.c_str(), port);
     return true;
 }
 
@@ -489,17 +470,19 @@ static std::string build_query_string(const httplib::Request & req) {
 // using unique_ptr for request to allow safe capturing in lambdas
 using server_http_req_ptr = std::unique_ptr<server_http_req>;
 
-static void process_handler_response(server_http_req_ptr && request, server_http_res_ptr & response, httplib::Response & res) {
+static void process_handler_response(server_http_req_ptr && request,
+                                     server_http_res_ptr &  response,
+                                     httplib::Response &    res) {
     if (response->is_stream()) {
         res.status = response->status;
         set_headers(res, response->headers);
-        const std::string content_type = response->content_type;
+        const std::string content_type      = response->content_type;
         // convert to shared_ptr as both chunked_content_provider() and on_complete() need to use it
-        std::shared_ptr q_ptr = std::move(request);
-        std::shared_ptr r_ptr = std::move(response);
+        std::shared_ptr   q_ptr             = std::move(request);
+        std::shared_ptr   r_ptr             = std::move(response);
         const auto chunked_content_provider = [response = r_ptr](size_t, const httplib::DataSink & sink) -> bool {
             std::string chunk;
-            const bool has_next = response->next(chunk);
+            const bool  has_next = response->next(chunk);
             if (!chunk.empty()) {
                 if (!sink.write(chunk.data(), chunk.size())) {
                     return false;
@@ -513,8 +496,8 @@ static void process_handler_response(server_http_req_ptr && request, server_http
             return has_next;
         };
         const auto on_complete = [request = q_ptr, response = r_ptr](bool) mutable {
-            response.reset(); // trigger the destruction of the response object
-            request.reset();  // trigger the destruction of the request object
+            response.reset();  // trigger the destruction of the response object
+            request.reset();   // trigger the destruction of the request object
         };
         res.set_chunked_content_provider(content_type, chunked_content_provider, on_complete);
     } else {
@@ -527,15 +510,13 @@ static void process_handler_response(server_http_req_ptr && request, server_http
 void server_http_context::get(const std::string & path, const server_http_context::handler_t & handler) const {
     handlers.emplace(path, handler);
     pimpl->srv->Get(path_prefix + path, [handler](const httplib::Request & req, httplib::Response & res) {
-        server_http_req_ptr request = std::make_unique<server_http_req>(server_http_req{
-            get_params(req),
-            get_headers(req),
-            req.path,
-            build_query_string(req),
-            req.body,
-            {},
-            req.is_connection_closed
-        });
+        server_http_req_ptr request  = std::make_unique<server_http_req>(server_http_req{ get_params(req),
+                                                                                          get_headers(req),
+                                                                                          req.path,
+                                                                                          build_query_string(req),
+                                                                                          req.body,
+                                                                                          {},
+                                                                                          req.is_connection_closed });
         server_http_res_ptr response = handler(*request);
         process_handler_response(std::move(request), response, res);
     });
@@ -544,7 +525,7 @@ void server_http_context::get(const std::string & path, const server_http_contex
 void server_http_context::post(const std::string & path, const server_http_context::handler_t & handler) const {
     handlers.emplace(path, handler);
     pimpl->srv->Post(path_prefix + path, [handler](const httplib::Request & req, httplib::Response & res) {
-        std::string body = req.body;
+        std::string                          body = req.body;
         std::map<std::string, uploaded_file> files;
 
         if (req.is_multipart_form_data()) {
@@ -555,7 +536,7 @@ void server_http_context::post(const std::string & path, const server_http_conte
                     // if the key already exists, convert it to an array
                     if (!form_json[key].is_array()) {
                         json existing_value = form_json[key];
-                        form_json[key] = json::array({existing_value});
+                        form_json[key]      = json::array({ existing_value });
                     }
                     form_json[key].push_back(field.content);
                 } else {
@@ -574,15 +555,9 @@ void server_http_context::post(const std::string & path, const server_http_conte
             }
         }
 
-        server_http_req_ptr request = std::make_unique<server_http_req>(server_http_req{
-            get_params(req),
-            get_headers(req),
-            req.path,
-            build_query_string(req),
-            body,
-            std::move(files),
-            req.is_connection_closed
-        });
+        server_http_req_ptr request = std::make_unique<server_http_req>(
+            server_http_req{ get_params(req), get_headers(req), req.path, build_query_string(req), body,
+                             std::move(files), req.is_connection_closed });
         server_http_res_ptr response = handler(*request);
         process_handler_response(std::move(request), response, res);
     });
@@ -604,9 +579,11 @@ static std::string path_to_gcp_format(const std::string & path) {
         s = s.substr(1);
     }
     std::string result;
-    bool cap = false;
+    bool        cap = false;
     for (unsigned char c : s) {
-        if (c == ':') break; // stop before path parameters
+        if (c == ':') {
+            break;  // stop before path parameters
+        }
         if (c == '/' || c == '-' || c == '_') {
             cap = true;
         } else {
@@ -660,104 +637,120 @@ void server_http_context::register_gcp_compat() const {
         get(gcp.path_health, health_handler->second);
     }
 
-    post(gcp.path_predict, [this, alias_to_path = std::move(alias_to_path)](const server_http_req & req) -> server_http_res_ptr {
-        static const auto build_error = [](const std::string & message, error_type type) -> json {
-            return json {{"error", format_error_response(message, type)}};
-        };
+    post(gcp.path_predict,
+         [this, alias_to_path = std::move(alias_to_path)](const server_http_req & req) -> server_http_res_ptr {
+             static const auto build_error = [](const std::string & message, error_type type) -> json {
+                 return json{
+                     { "error", format_error_response(message, type) }
+                 };
+             };
 
-        json data;
-        try {
-            data = json::parse(req.body);
-        } catch (const std::exception & e) {
-            auto res = std::make_unique<server_http_res>();
-            res->status = 400;
-            res->data = safe_json_to_str({{"error", format_error_response(e.what(), ERROR_TYPE_INVALID_REQUEST)}});
-            return res;
-        }
-        if (!data.is_object()) {
-            auto res = std::make_unique<server_http_res>();
-            res->status = 400;
-            res->data = safe_json_to_str({{"error", format_error_response("request body must be a JSON object", ERROR_TYPE_INVALID_REQUEST)}});
-            return res;
-        }
-        if (!data.contains("instances") || !data.at("instances").is_array()) {
-            auto res = std::make_unique<server_http_res>();
-            res->status = 400;
-            res->data = safe_json_to_str({{"error", format_error_response("request body must include an array field named instances", ERROR_TYPE_INVALID_REQUEST)}});
-            return res;
-        }
+             json data;
+             try {
+                 data = json::parse(req.body);
+             } catch (const std::exception & e) {
+                 auto res    = std::make_unique<server_http_res>();
+                 res->status = 400;
+                 res->data   = safe_json_to_str({
+                     { "error", format_error_response(e.what(), ERROR_TYPE_INVALID_REQUEST) }
+                 });
+                 return res;
+             }
+             if (!data.is_object()) {
+                 auto res    = std::make_unique<server_http_res>();
+                 res->status = 400;
+                 res->data   = safe_json_to_str({
+                     { "error",
+                      format_error_response("request body must be a JSON object", ERROR_TYPE_INVALID_REQUEST) }
+                 });
+                 return res;
+             }
+             if (!data.contains("instances") || !data.at("instances").is_array()) {
+                 auto res    = std::make_unique<server_http_res>();
+                 res->status = 400;
+                 res->data   = safe_json_to_str({
+                     { "error", format_error_response("request body must include an array field named instances",
+                      ERROR_TYPE_INVALID_REQUEST) }
+                 });
+                 return res;
+             }
 
-        const json & instances = data.at("instances");
-        static const size_t MAX_INSTANCES = 128;
-        if (instances.size() > MAX_INSTANCES) {
-            auto res = std::make_unique<server_http_res>();
-            res->status = 400;
-            res->data = safe_json_to_str({{"error", format_error_response("instances array exceeds maximum size of " + std::to_string(MAX_INSTANCES), ERROR_TYPE_INVALID_REQUEST)}});
-            return res;
-        }
+             const json &        instances     = data.at("instances");
+             static const size_t MAX_INSTANCES = 128;
+             if (instances.size() > MAX_INSTANCES) {
+                 auto res    = std::make_unique<server_http_res>();
+                 res->status = 400;
+                 res->data   = safe_json_to_str({
+                     { "error",
+                      format_error_response("instances array exceeds maximum size of " + std::to_string(MAX_INSTANCES),
+                      ERROR_TYPE_INVALID_REQUEST) }
+                 });
+                 return res;
+             }
 
-        std::vector<std::future<json>> futures;
-        futures.reserve(instances.size());
+             std::vector<std::future<json>> futures;
+             futures.reserve(instances.size());
 
-        for (const auto & instance : instances) {
-            futures.push_back(std::async(std::launch::async, [this, &req, &alias_to_path, instance]() -> json {
-                if (!instance.is_object()) {
-                    return build_error("each instance must be a JSON object", ERROR_TYPE_INVALID_REQUEST);
-                }
-                if (!instance.contains("@requestFormat") || !instance.at("@requestFormat").is_string()) {
-                    return build_error("each instance must include a string @requestFormat", ERROR_TYPE_INVALID_REQUEST);
-                }
+             for (const auto & instance : instances) {
+                 futures.push_back(std::async(std::launch::async, [this, &req, &alias_to_path, instance]() -> json {
+                     if (!instance.is_object()) {
+                         return build_error("each instance must be a JSON object", ERROR_TYPE_INVALID_REQUEST);
+                     }
+                     if (!instance.contains("@requestFormat") || !instance.at("@requestFormat").is_string()) {
+                         return build_error("each instance must include a string @requestFormat",
+                                            ERROR_TYPE_INVALID_REQUEST);
+                     }
 
-                try {
-                    json payload = instance;
-                    const std::string format = payload.at("@requestFormat").get<std::string>();
-                    payload.erase("@requestFormat");
+                     try {
+                         json              payload = instance;
+                         const std::string format  = payload.at("@requestFormat").get<std::string>();
+                         payload.erase("@requestFormat");
 
-                    if (payload.contains("stream")) {
-                        SRV_WRN("%s", "ignoring client-provided stream field in instance, streaming is not supported in predict route\n");
-                        payload["stream"] = false;
-                    }
+                         if (payload.contains("stream")) {
+                             SRV_WRN("%s",
+                                     "ignoring client-provided stream field in instance, streaming is not supported in "
+                                     "predict route\n");
+                             payload["stream"] = false;
+                         }
 
-                    // accept both camelCase aliases (e.g. "chatCompletions") and direct paths
-                    std::string dispatch_path;
-                    auto it_alias = alias_to_path.find(format);
-                    if (it_alias != alias_to_path.end()) {
-                        dispatch_path = it_alias->second;
-                    } else if (handlers.count(format)) {
-                        dispatch_path = format;
-                    } else {
-                        return build_error("no handler registered for @requestFormat: " + format, ERROR_TYPE_INVALID_REQUEST);
-                    }
+                         // accept both camelCase aliases (e.g. "chatCompletions") and direct paths
+                         std::string dispatch_path;
+                         auto        it_alias = alias_to_path.find(format);
+                         if (it_alias != alias_to_path.end()) {
+                             dispatch_path = it_alias->second;
+                         } else if (handlers.count(format)) {
+                             dispatch_path = format;
+                         } else {
+                             return build_error("no handler registered for @requestFormat: " + format,
+                                                ERROR_TYPE_INVALID_REQUEST);
+                         }
 
-                    const server_http_req internal_req {
-                        req.params,
-                        req.headers,
-                        path_prefix + dispatch_path,
-                        req.query_string,
-                        payload.dump(),
-                        {},
-                        req.should_stop,
-                    };
+                         const server_http_req internal_req{
+                             req.params, req.headers,     path_prefix + dispatch_path, req.query_string, payload.dump(),
+                             {},         req.should_stop,
+                         };
 
-                    server_http_res_ptr internal_res = handlers.at(dispatch_path)(internal_req);
-                    return parse_gcp_predict_response(internal_res);
-                } catch (const std::invalid_argument & e) {
-                    return build_error(e.what(), ERROR_TYPE_INVALID_REQUEST);
-                } catch (const std::exception & e) {
-                    return build_error(e.what(), ERROR_TYPE_SERVER);
-                } catch (...) {
-                    return build_error("unknown error", ERROR_TYPE_SERVER);
-                }
-            }));
-        }
+                         server_http_res_ptr internal_res = handlers.at(dispatch_path)(internal_req);
+                         return parse_gcp_predict_response(internal_res);
+                     } catch (const std::invalid_argument & e) {
+                         return build_error(e.what(), ERROR_TYPE_INVALID_REQUEST);
+                     } catch (const std::exception & e) {
+                         return build_error(e.what(), ERROR_TYPE_SERVER);
+                     } catch (...) {
+                         return build_error("unknown error", ERROR_TYPE_SERVER);
+                     }
+                 }));
+             }
 
-        json predictions = json::array();
-        for (auto & future : futures) {
-            predictions.push_back(future.get());
-        }
+             json predictions = json::array();
+             for (auto & future : futures) {
+                 predictions.push_back(future.get());
+             }
 
-        auto res = std::make_unique<server_http_res>();
-        res->data = safe_json_to_str({{"predictions", predictions}});
-        return res;
-    });
+             auto res  = std::make_unique<server_http_res>();
+             res->data = safe_json_to_str({
+                 { "predictions", predictions }
+             });
+             return res;
+         });
 }
