@@ -24,7 +24,7 @@ set(STAMP_FILE   "${UI_BINARY_DIR}/.ui-stamp")
 set(UI_CPP       "${UI_BINARY_DIR}/ui.cpp")
 set(UI_H         "${UI_BINARY_DIR}/ui.h")
 
-function(npm_build_should_skip out_var)
+function(bun_build_should_skip out_var)
     set(${out_var} FALSE PARENT_SCOPE)
 
     if(NOT EXISTS "${DIST_DIR}/index.html")
@@ -64,7 +64,7 @@ function(npm_build_should_skip out_var)
     set(${out_var} TRUE PARENT_SCOPE)
 endfunction()
 
-function(npm_build out_var)
+function(bun_build out_var)
     set(${out_var} FALSE PARENT_SCOPE)
 
     if(NOT EXISTS "${UI_SOURCE_DIR}/package.json")
@@ -284,7 +284,7 @@ set(provisioned FALSE)
 if(BUILD_UI)
     # Resolve version from git build-info if not explicitly set
     resolve_version(HF_VERSION)
-    npm_build(NPM_OK)
+    bun_build(NPM_OK)
     if(NPM_OK)
         set(provisioned TRUE)
     endif()
