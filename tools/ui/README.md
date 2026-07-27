@@ -82,14 +82,14 @@ Llama UI supports two server operation modes:
 ### Prerequisites
 
 - **Node.js** 18+ (20+ recommended)
-- **npm** 9+
+- **bun** 9+
 - **llama-server** running locally (for API access)
 
 ### 1. Install Dependencies
 
 ```bash
 cd tools/ui
-npm install
+bun install
 ```
 
 ### 2. Start llama-server
@@ -107,7 +107,7 @@ In a separate terminal, start the backend server:
 ### 3. Start Development Servers
 
 ```bash
-npm run dev
+bun run dev
 ```
 
 This starts:
@@ -170,7 +170,7 @@ proxy: {
 ### Development Build
 
 ```bash
-npm run dev
+bun run dev
 ```
 
 Runs Vite in development mode with:
@@ -182,7 +182,7 @@ Runs Vite in development mode with:
 ### Production Build
 
 ```bash
-npm run build
+bun run build
 ```
 
 The build process:
@@ -221,7 +221,7 @@ output: {
 
 llama-ui is embedded directly into the llama-server binary:
 
-1. `npm run build` outputs `index.html` to `build/tools/ui/dist/`
+1. `bun run build` outputs `index.html` to `build/tools/ui/dist/`
 2. llama-server compiles this into the binary at build time
 3. When accessing `/`, llama-server serves the bundled HTML
 
@@ -622,37 +622,37 @@ flowchart TB
 
 | Type          | Tool               | Location         | Command             |
 | ------------- | ------------------ | ---------------- | ------------------- |
-| **Unit**      | Vitest             | `tests/unit/`    | `npm run test:unit` |
-| **UI/Visual** | Storybook + Vitest | `tests/stories/` | `npm run test:ui`   |
-| **E2E**       | Playwright         | `tests/e2e/`     | `npm run test:e2e`  |
-| **Client**    | Vitest             | `tests/client/`. | `npm run test:unit` |
+| **Unit**      | Vitest             | `tests/unit/`    | `bun run test:unit` |
+| **UI/Visual** | Storybook + Vitest | `tests/stories/` | `bun run test:ui`   |
+| **E2E**       | Playwright         | `tests/e2e/`     | `bun run test:e2e`  |
+| **Client**    | Vitest             | `tests/client/`. | `bun run test:unit` |
 
 ### Running Tests
 
 ```bash
 # All tests
-npm run test
+bun run test
 
 # Individual test suites
-npm run test:e2e      # End-to-end (requires llama-server)
-npm run test:client   # Client-side unit tests
-npm run test:server   # Server-side unit tests
-npm run test:ui       # Storybook visual tests
+bun run test:e2e      # End-to-end (requires llama-server)
+bun run test:client   # Client-side unit tests
+bun run test:server   # Server-side unit tests
+bun run test:ui       # Storybook visual tests
 ```
 
 ### Storybook Development
 
 ```bash
-npm run storybook     # Start Storybook dev server on :6006
-npm run build-storybook  # Build static Storybook
+bun run storybook     # Start Storybook dev server on :6006
+bun run build-storybook  # Build static Storybook
 ```
 
 ### Linting and Formatting
 
 ```bash
-npm run lint          # Check code style
-npm run format        # Auto-format with Prettier
-npm run check         # TypeScript type checking
+bun run lint          # Check code style
+bun run format        # Auto-format with Prettier
+bun run check         # TypeScript type checking
 ```
 
 ---

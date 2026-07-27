@@ -2,19 +2,19 @@
 #
 # Asset provisioning priority:
 #   1. Pre-built assets in SRC_DIST_DIR (manually built by user)
-#   2. If BUILD_UI=ON: npm build
+#   2. If BUILD_UI=ON: bun build
 #   3. If above did not produce assets and HF_ENABLED=ON: HF Bucket download
 #      of dist.tar.gz (verified against dist.tar.gz.sha256)
 
 cmake_minimum_required(VERSION 3.18)
 
-set(UI_SOURCE_DIR     "" CACHE STRING "UI source directory (to run npm build)")
+set(UI_SOURCE_DIR     "" CACHE STRING "UI source directory (to run bun build)")
 set(UI_BINARY_DIR     "" CACHE STRING "UI binary directory (to store generated files)")
 set(LLAMA_SOURCE_DIR  "" CACHE STRING "Project source root (to resolve version from git)")
 set(HF_BUCKET         "" CACHE STRING "Hugging Face bucket name")
 set(HF_VERSION        "" CACHE STRING "Version to download (empty = resolve from git)")
 set(HF_ENABLED        "" CACHE STRING "Whether to allow HF Bucket download (ON/OFF)")
-set(BUILD_UI          "" CACHE STRING "Build UI via npm (ON/OFF)")
+set(BUILD_UI          "" CACHE STRING "Build UI via bun (ON/OFF)")
 set(LLAMA_UI_EMBED    "" CACHE STRING "Path to llama-ui-embed helper")
 set(LLAMA_UI_GZIP     "" CACHE STRING "Apply gzip compress to assets to save bandwidth")
 
@@ -68,30 +68,30 @@ function(npm_build out_var)
     set(${out_var} FALSE PARENT_SCOPE)
 
     if(NOT EXISTS "${UI_SOURCE_DIR}/package.json")
-        message(STATUS "UI: ${UI_SOURCE_DIR}/package.json not found, skipping npm")
+        message(STATUS "UI: ${UI_SOURCE_DIR}/package.json not found, skipping bun")
         return()
     endif()
 
-    npm_build_should_skip(skip)
+    bun_build_should_skip(skip)
     if(skip)
-        message(STATUS "UI: npm output up-to-date, skipping build")
+        message(STATUS "UI: bun output up-to-date, skipping build")
         set(${out_var} TRUE PARENT_SCOPE)
         return()
     endif()
 
     if(CMAKE_HOST_WIN32)
-        find_program(NPM_EXECUTABLE NAMES npm.cmd npm.bat npm)
+        find_program(bun_EXECUTABLE NAMES bun.cmd bun.bat bun)
     else()
-        find_program(NPM_EXECUTABLE npm)
+        find_program(bun_EXECUTABLE bun)
     endif()
-    if(NOT NPM_EXECUTABLE)
-        message(STATUS "UI: npm not found, skipping npm build")
+    if(NOT bun_EXECUTABLE)
+        message(STATUS "UI: bun not found, skipping bun build")
         return()
     endif()
 
-    # npm writes node_modules/.package-lock.json on every successful install,
+    # bun writes node_modules/.package-lock.json on every successful install,
     # so a package-lock.json newer than this marker means node_modules is stale
-    set(NPM_MARKER "${UI_SOURCE_DIR}/node_modules/.package-lock.json")
+    set(bun_MARKER "${UI_SOURCE_DIR}/node_modules/.package-lock.json")
     set(need_install FALSE)
     if(NOT EXISTS "${NPM_MARKER}")
         set(need_install TRUE)
@@ -104,15 +104,15 @@ function(npm_build out_var)
     endif()
 
     if(need_install)
-        message(STATUS "UI: running npm install")
+        message(STATUS "UI: running bun install")
         execute_process(
-            COMMAND ${NPM_EXECUTABLE} install
+            COMMAND ${bun_EXECUTABLE} install
             WORKING_DIRECTORY "${UI_SOURCE_DIR}"
             RESULT_VARIABLE rc
             ERROR_VARIABLE  err
         )
         if(NOT rc EQUAL 0)
-            message(STATUS "UI: npm install failed (${rc})")
+            message(STATUS "UI: bun install failed (${rc})")
             message(STATUS "  stderr: ${err}")
             return()
         endif()
@@ -120,7 +120,7 @@ function(npm_build out_var)
 
     file(MAKE_DIRECTORY "${DIST_DIR}")
 
-    message(STATUS "UI: running npm run build, output -> ${DIST_DIR}")
+    message(STATUS "UI: running bun run build, output -> ${DIST_DIR}")
     execute_process(
         COMMAND ${CMAKE_COMMAND} -E env "LLAMA_UI_OUT_DIR=${DIST_DIR}" "LLAMA_UI_VERSION=${HF_VERSION}" "LLAMA_BUILD_NUMBER=${LLAMA_BUILD_NUMBER}"
                 ${NPM_EXECUTABLE} run build
@@ -129,17 +129,17 @@ function(npm_build out_var)
         ERROR_VARIABLE  err
     )
     if(NOT rc EQUAL 0)
-        message(STATUS "UI: npm run build failed (${rc})")
+        message(STATUS "UI: bun run build failed (${rc})")
         message(STATUS "  stderr: ${err}")
         return()
     endif()
 
     if(NOT EXISTS "${DIST_DIR}/index.html")
-        message(STATUS "UI: npm build finished but assets missing in ${DIST_DIR}")
+        message(STATUS "UI: bun build finished but assets missing in ${DIST_DIR}")
         return()
     endif()
 
-    message(STATUS "UI: npm build succeeded")
+    message(STATUS "UI: bun build succeeded")
     file(REMOVE "${STAMP_FILE}")
     set(${out_var} TRUE PARENT_SCOPE)
 endfunction()
@@ -277,7 +277,7 @@ if(EXISTS "${SRC_DIST_DIR}/index.html")
 endif()
 
 # ---------------------------------------------------------------------------
-# 2. Priority 2: npm build (if BUILD_UI=ON)
+# 2. Priority 2: bun build (if BUILD_UI=ON)
 # ---------------------------------------------------------------------------
 set(provisioned FALSE)
 
@@ -291,7 +291,7 @@ if(BUILD_UI)
 endif()
 
 # ---------------------------------------------------------------------------
-# 3. Priority 3: HF Bucket download (if npm did not produce assets and HF_ENABLED=ON)
+# 3. Priority 3: HF Bucket download (if bun did not produce assets and HF_ENABLED=ON)
 # ---------------------------------------------------------------------------
 if(NOT provisioned AND HF_ENABLED)
     resolve_version(VERSION)

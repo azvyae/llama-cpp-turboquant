@@ -14,7 +14,7 @@ cd "$REPO_ROOT/tools/ui"
 
 # Check that node_modules exists
 if [ ! -d "node_modules" ]; then
-    echo "❌ node_modules not found. Run 'npm install' first."
+    echo "❌ node_modules not found. Run 'bun install' first."
     exit 1
 fi
 
@@ -36,7 +36,7 @@ else
 fi
 
 # Type-check the clean tree
-npm run check
+bun run check
 check_ok=$?
 
 # Restore stashed changes

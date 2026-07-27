@@ -151,7 +151,7 @@ effectiveStdenv.mkDerivation (finalAttrs: {
     };
 
     installPhase = ''
-      LLAMA_UI_OUT_DIR=$out npm run build --offline
+      LLAMA_UI_OUT_DIR=$out bun run build --offline
     '';
   };
 

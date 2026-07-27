@@ -2,7 +2,7 @@
 export const README_MD = String.raw`
 # 🚀 Awesome Web Framework
 
-[![npm version](https://img.shields.io/npm/v/awesome-framework.svg)](https://www.npmjs.com/package/awesome-framework)
+[![bun version](https://img.shields.io/bun/v/awesome-framework.svg)](https://www.bunjs.com/package/awesome-framework)
 [![Build Status](https://github.com/awesome/framework/workflows/CI/badge.svg)](https://github.com/awesome/framework/actions)
 [![Coverage](https://codecov.io/gh/awesome/framework/branch/main/graph/badge.svg)](https://codecov.io/gh/awesome/framework)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -22,27 +22,27 @@ export const README_MD = String.raw`
 
 ## 📦 Installation
 
-${'```'}bash
-npm install awesome-framework
+${"```"}bash
+bun install awesome-framework
 # or
 yarn add awesome-framework
 # or
 pnpm add awesome-framework
-${'```'}
+${"```"}
 
 ## 🚀 Quick Start
 
 ### Create a new project
 
-${'```'}bash
+${"```"}bash
 npx create-awesome-app my-app
 cd my-app
-npm run dev
-${'```'}
+bun run dev
+${"```"}
 
 ### Basic Example
 
-${'```'}javascript
+${"```"}javascript
 import { createApp } from 'awesome-framework';
 
 const app = createApp({
@@ -57,7 +57,7 @@ app.get('/', (req, res) => {
 app.listen(() => {
   console.log('Server running on http://localhost:3000');
 });
-${'```'}
+${"```"}
 
 ## 📖 Documentation
 
@@ -86,20 +86,20 @@ ${'```'}
 
 ### Setup
 
-${'```'}bash
+${"```"}bash
 git clone https://github.com/awesome/framework.git
 cd framework
 pnpm install
 pnpm dev
-${'```'}
+${"```"}
 
 ### Testing
 
-${'```'}bash
+${"```"}bash
 pnpm test        # Run unit tests
 pnpm test:e2e    # Run end-to-end tests
 pnpm test:watch  # Run tests in watch mode
-${'```'}
+${"```"}
 
 ## 🤝 Contributing
 

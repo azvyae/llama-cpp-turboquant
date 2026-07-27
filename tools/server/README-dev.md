@@ -247,16 +247,16 @@ For detailed architecture diagrams, see [`tools/ui/docs/`](../ui/docs/):
 ```sh
 # make sure you have Node.js installed
 cd tools/ui
-npm i
+bun i
 
 # run dev server (with hot reload)
-npm run dev
+bun run dev
 
 # run tests
-npm run test
+bun run test
 
 # build production bundle
-npm run build
+bun run build
 ```
 
 After `public/index.html` has been generated, rebuild `llama-server` as described in the [build](#build) section to include the updated UI.

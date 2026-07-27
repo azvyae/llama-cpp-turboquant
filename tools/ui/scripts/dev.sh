@@ -7,14 +7,14 @@
 #
 # Usage:
 #   bash scripts/dev.sh
-#   npm run dev
+#   bun run dev
 
 cd ../../
 
 # Ensure node_modules are installed
 if [ ! -d "tools/ui/node_modules" ]; then
-    echo "📦 Installing npm dependencies..."
-    cd tools/ui && npm install && cd ../../
+    echo "📦 Installing bun dependencies..."
+    cd tools/ui && bun install && cd ../../
 fi
 
 # Check and install git hooks if missing

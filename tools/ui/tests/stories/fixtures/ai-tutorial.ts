@@ -8,18 +8,18 @@ I'll help you create a **production-ready chat application** using SvelteKit, Ty
 
 First, let's set up the project:
 
-${'```'}bash
-npm create svelte@latest chat-app
+${"```"}bash
+bun create svelte@latest chat-app
 cd chat-app
-npm install
-npm install socket.io socket.io-client
-npm install @prisma/client prisma
-npm run dev
-${'```'}
+bun install
+bun install socket.io socket.io-client
+bun install @prisma/client prisma
+bun run dev
+${"```"}
 
 ## 📁 Project Structure
 
-${'```'}
+${"```"}
 chat-app/
 ├── src/
 │   ├── routes/
@@ -37,13 +37,13 @@ chat-app/
 ├── prisma/
 │   └── schema.prisma
 └── package.json
-${'```'}
+${"```"}
 
 ## 💻 Implementation
 
 ### WebSocket Server
 
-${'```'}typescript
+${"```"}typescript
 // src/lib/server/socket.ts
 import { Server } from 'socket.io';
 import type { ViteDevServer } from 'vite';
@@ -58,7 +58,7 @@ export function initializeSocketIO(server: ViteDevServer) {
 
     io.on('connection', (socket) => {
         console.log('User connected:', socket.id);
-        
+
         socket.on('message', async (data) => {
             // Broadcast to all clients
             io.emit('new-message', {
@@ -76,11 +76,11 @@ export function initializeSocketIO(server: ViteDevServer) {
 
     return io;
 }
-${'```'}
+${"```"}
 
 ### Client Store
 
-${'```'}typescript
+${"```"}typescript
 // src/lib/stores/chat.ts
 import { writable } from 'svelte/store';
 import io from 'socket.io-client';
@@ -95,12 +95,12 @@ export interface Message {
 function createChatStore() {
     const { subscribe, update } = writable<Message[]>([]);
     let socket: ReturnType<typeof io>;
-    
+
     return {
         subscribe,
         connect: () => {
             socket = io('http://localhost:5173');
-            
+
             socket.on('new-message', (message: Message) => {
                 update(messages => [...messages, message]);
             });
@@ -114,15 +114,15 @@ function createChatStore() {
 }
 
 export const chatStore = createChatStore();
-${'```'}
+${"```"}
 
 ## 🎯 Key Features
 
-✅ **Real-time messaging** with WebSockets  
-✅ **Message persistence** using Prisma + PostgreSQL  
-✅ **Type-safe** with TypeScript  
-✅ **Responsive UI** for all devices  
-✅ **Auto-reconnection** on connection loss  
+✅ **Real-time messaging** with WebSockets
+✅ **Message persistence** using Prisma + PostgreSQL
+✅ **Type-safe** with TypeScript
+✅ **Responsive UI** for all devices
+✅ **Auto-reconnection** on connection loss
 
 ## 📊 Performance Metrics
 
@@ -137,26 +137,26 @@ ${'```'}
 
 ### Environment Variables
 
-${'```'}env
+${"```"}env
 DATABASE_URL="postgresql://user:password@localhost:5432/chat"
 JWT_SECRET="your-secret-key"
 REDIS_URL="redis://localhost:6379"
-${'```'}
+${"```"}
 
 ## 🚢 Deployment
 
 Deploy to production using Docker:
 
-${'```'}dockerfile
+${"```"}dockerfile
 FROM node:20-alpine
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --only=production
+RUN bun ci --only=production
 COPY . .
-RUN npm run build
+RUN bun run build
 EXPOSE 3000
 CMD ["node", "build"]
-${'```'}
+${"```"}
 
 ---
 

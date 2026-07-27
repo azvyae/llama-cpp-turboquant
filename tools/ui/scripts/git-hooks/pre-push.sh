@@ -30,7 +30,7 @@ cd "$REPO_ROOT/tools/ui"
 
 # Check that node_modules exists
 if [ ! -d "node_modules" ]; then
-    echo "❌ node_modules not found. Run 'npm install' first."
+    echo "❌ node_modules not found. Run 'bun install' first."
     exit 1
 fi
 
@@ -41,11 +41,11 @@ git stash push -u -m "$stash_name" -- tools/ui/ 2>/dev/null || true
 echo "Running pre-push checks for llama-ui..."
 
 # Lint
-npm run lint
+bun run lint
 lint_ok=$?
 
 # Test
-npm test
+bun test
 test_ok=$?
 
 # Restore stashed changes

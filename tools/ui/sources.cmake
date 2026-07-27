@@ -1,4 +1,4 @@
-# Inputs used to decide whether the npm build output is up-to-date.
+# Inputs used to decide whether the bun build output is up-to-date.
 
 set(UI_SOURCE_GLOBS
     src/*
